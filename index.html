@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Proxy Hub</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔀</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EEF2F4;--surface:#fff;--ink:#14212B;--muted:#5B6B78;--line:#D3DCE2;--accent:#0F6E8C;--accent-ink:#fff;--ok:#1E8E5A;--warn:#B7791F;--bad:#B3392F;--code:#E3EAEE;
+--sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#0F171D;--surface:#17222A;--ink:#E6EEF3;--muted:#93A4B1;--line:#27363F;--accent:#4DB6D6;--accent-ink:#0B1318;--ok:#4CC38A;--warn:#E0A94A;--bad:#EF7B70;--code:#1F2D36}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.6 var(--sans);padding:0 20px 64px}
+main{max-width:720px;margin:0 auto}
+header{padding:40px 0 4px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+h1{font-size:28px;line-height:1.2;margin:0 0 6px;font-weight:600}
+h2{font-size:18px;margin:36px 0 12px;font-weight:600}
+p{margin:0 0 12px;max-width:62ch}.muted{color:var(--muted)}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:4px;min-height:44px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:500}
+button.danger{color:var(--bad)}
+button:disabled{opacity:.6;cursor:default}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+input,select,textarea{width:100%;min-height:44px;padding:9px 12px;border:1px solid var(--line);border-radius:4px;background:var(--bg)}
+textarea{font-family:var(--mono);font-size:14px;min-height:80px;resize:vertical}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}.field span{font-size:14px;color:var(--muted)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:520px){.row{grid-template-columns:1fr}}
+.err{color:var(--bad);font-size:14px;margin:8px 0 0;min-height:1em}
+code,.mono{font-family:var(--mono);font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;margin-bottom:12px}
+.card .url{font:500 14px/1.4 var(--mono);background:var(--code);padding:8px 10px;border-radius:4px;word-break:break-all;margin:8px 0}
+.card h3{margin:0;font-size:16px;font-weight:600}
+.tgt{font-size:14px;color:var(--muted);word-break:break-all}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.chip{font-size:13px;border:1px solid var(--line);border-radius:999px;padding:1px 10px}
+.chip.ok{color:var(--ok)}.chip.warn{color:var(--warn)}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+pre{margin:12px 0 0;background:var(--code);padding:12px;border-radius:4px;overflow-x:auto;font:400 13px/1.5 var(--mono);white-space:pre-wrap;word-break:break-word}
+details{margin-bottom:12px}summary{cursor:pointer;color:var(--muted);font-size:14px;margin-bottom:10px}
+.tabs{display:flex;gap:8px;margin:24px 0 0;overflow-x:auto}.tabs button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Proxy Hub</h1>
+      <p class="muted">Buat proxy API sendiri. Tiap proxy punya URL sendiri, API key-nya tersimpan di server.</p>
+    </div>
+    <button id="logout" type="button" hidden>Keluar</button>
+  </header>
+
+  <section id="login" class="panel" style="margin-top:24px">
+    <label class="field"><span>Password admin (ADMIN_PASSWORD)</span>
+      <input id="pw" type="password" autocomplete="current-password"></label>
+    <button class="primary" id="loginBtn" type="button">Masuk</button>
+    <p class="err" id="loginErr" role="alert"></p>
+  </section>
+
+  <div id="app" hidden>
+    <nav class="tabs" aria-label="Menu">
+      <button class="on" data-t="proxy" type="button">Proxy</button>
+      <button data-t="fn" type="button">Kode</button>
+      <button data-t="env" type="button">Environment</button>
+    </nav>
+    <div id="tab-proxy">
+    <h2 id="formTitle">Proxy baru</h2>
+    <div class="panel">
+      <div class="row">
+        <label class="field"><span>Nama (jadi bagian URL)</span><input id="slug" placeholder="openai" autocapitalize="off" spellcheck="false"></label>
+        <label class="field"><span>Target URL</span><input id="target" placeholder="https://api.openai.com" autocapitalize="off" spellcheck="false"></label>
+      </div>
+      <label class="field"><span id="keyLabel">API key tujuan</span><input id="apiKey" type="password" autocomplete="off"></label>
+      <details>
+        <summary>Pengaturan lanjutan</summary>
+        <div class="row">
+          <label class="field"><span>Nama header key</span><input id="authHeader" value="Authorization" autocapitalize="off"></label>
+          <label class="field"><span>Awalan key (kosongkan untuk x-api-key)</span><input id="authPrefix" value="Bearer "></label>
+        </div>
+        <label class="field"><span>Token proxy (kata sandi untuk pemanggil, header x-proxy-token)</span><input id="token" type="password" autocomplete="off"></label>
+        <label class="field"><span>Domain yang boleh memanggil dari browser (pisah koma)</span><input id="origins" value="*"></label>
+        <label class="field"><span>Header tambahan (JSON)</span><textarea id="extra" spellcheck="false" placeholder='{"anthropic-version":"2023-06-01"}'></textarea></label>
+        <div class="row">
+          <label class="field"><span>Nama env var untuk key (opsional)</span><input id="keyEnv" placeholder="GROQ_KEY" autocapitalize="off"></label>
+          <label class="field"><span>Path tetap (untuk mode action)</span><input id="apath" placeholder="/v1/chat/completions" autocapitalize="off"></label>
+        </div>
+        <div class="row">
+          <label class="field"><span>Model yang diizinkan (opsional)</span><input id="allowedModel" autocapitalize="off"></label>
+          <label class="field" style="justify-content:flex-end"><span><input type="checkbox" id="noStream" style="width:auto;min-height:0"> Paksa stream=false</span></label>
+        </div>
+        <label id="clearWrap" hidden class="muted"><input type="checkbox" id="clearKey" style="width:auto;min-height:0"> Hapus API key tersimpan &nbsp;
+          <input type="checkbox" id="clearToken" style="width:auto;min-height:0"> Hapus token tersimpan</label>
+      </details>
+      <div class="acts">
+        <button class="primary" id="save" type="button">Simpan proxy</button>
+        <button id="cancel" type="button" hidden>Batal edit</button>
+      </div>
+      <p class="err" id="formErr" role="alert"></p>
+    </div>
+
+    <h2>Proxy kamu</h2>
+    <p class="muted" style="font-size:14px">Endpoint mode action (pengganti val lama): <code id="compat"></code></p>
+    <button id="importBtn" type="button" style="margin-bottom:8px">Impor preset dari main.ts</button>
+    <p class="muted" id="importMsg" style="font-size:14px;min-height:1em"></p>
+    <div id="list"><p class="muted">Memuat…</p></div>
+
+    <h2>Coba proxy atau kode</h2>
+    <div class="panel">
+      <div class="row">
+        <label class="field"><span>Proxy</span><select id="tProxy"></select></label>
+        <label class="field"><span>Method</span><select id="tMethod"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></label>
+      </div>
+      <label class="field"><span>Path</span><input id="tPath" value="/v1/models" autocapitalize="off" spellcheck="false"></label>
+      <label class="field"><span>Token proxy (jika ada)</span><input id="tToken" type="password" autocomplete="off"></label>
+      <label class="field"><span>Body JSON</span><textarea id="tBody" spellcheck="false"></textarea></label>
+      <button class="primary" id="send" type="button">Kirim request</button>
+      <p class="muted" id="meta" style="margin:10px 0 0;font-size:14px"></p>
+      <pre id="out" hidden></pre>
+    </div>
+  </div>
+  <div id="tab-fn" hidden>
+    <h2 id="fnTitle">Fungsi baru</h2>
+    <p class="muted" style="font-size:14px">Tulis kode JavaScript, langsung jalan di URL <code>/f/nama</code>. Pakai <code>await env("NAMA")</code> untuk membaca variabel dari tab Environment.</p>
+    <div class="panel">
+      <label class="field"><span>Nama (jadi bagian URL)</span><input id="fSlug" placeholder="halo" autocapitalize="off" spellcheck="false"></label>
+      <label class="field"><span>Kode</span><textarea id="fCode" style="min-height:280px" spellcheck="false" wrap="off" autocapitalize="off"></textarea></label>
+      <div class="acts"><button class="primary" id="fSave" type="button">Simpan fungsi</button><button id="fCancel" type="button" hidden>Batal edit</button></div>
+      <p class="err" id="fErr" role="alert"></p>
+    </div>
+    <h2>Fungsi kamu</h2>
+    <div id="fList"></div>
+  </div>
+  <div id="tab-env" hidden>
+    <h2>Environment variables</h2>
+    <p class="muted" style="font-size:14px">Nilai disimpan di server dan tidak pernah ditampilkan lagi. Dipakai oleh proxy (isian "Nama env var") dan oleh kode lewat <code>env("NAMA")</code>. Menyimpan nama yang sama akan mengganti nilainya.</p>
+    <div class="panel">
+      <div class="row">
+        <label class="field"><span>Nama</span><input id="eName" placeholder="GROQ_KEY" autocapitalize="characters" spellcheck="false"></label>
+        <label class="field"><span>Nilai</span><input id="eVal" type="password" autocomplete="off"></label>
+      </div>
+      <button class="primary" id="eSave" type="button">Simpan variabel</button>
+      <p class="err" id="eErr" role="alert"></p>
+    </div>
+    <h2>Variabel tersimpan</h2>
+    <div id="eList"></div>
+    <p class="muted" style="font-size:14px">Hanya <code>ADMIN_PASSWORD</code> yang tetap harus diisi di dashboard Netlify.</p>
+  </div>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let pw = sessionStorage.getItem("pw") || "", proxies = [], editing = null;
+
+async function api(path, opt = {}) {
+  const r = await fetch("/admin-api" + path, { ...opt, headers: { "x-admin-password": pw, "Content-Type": "application/json" } });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || "Error " + r.status);
+  return d;
+}
+
+async function enter() {
+  try { await api("/ping"); } catch (e) { $("loginErr").textContent = e.message; pw = ""; sessionStorage.removeItem("pw"); return false; }
+  sessionStorage.setItem("pw", pw);
+  $("login").hidden = true; $("app").hidden = false; $("logout").hidden = false;
+  await load(); loadFns(); loadEnv(); return true;
+}
+$("loginBtn").onclick = () => { pw = $("pw").value; $("loginErr").textContent = ""; enter(); };
+$("pw").onkeydown = (e) => { if (e.key === "Enter") $("loginBtn").click(); };
+$("logout").onclick = () => { sessionStorage.removeItem("pw"); location.reload(); };
+
+function keyChip(p) {
+  if (p.hasKey) return '<span class="chip ok">API key tersimpan</span>';
+  if (p.keyEnv) return p.envKey ? `<span class="chip ok">Key dari env ${esc(p.keyEnv)}</span>` : `<span class="chip warn">Env ${esc(p.keyEnv)} belum diisi</span>`;
+  return '<span class="chip warn">Tanpa API key</span>';
+}
+$("compat").textContent = location.origin + "/api";
+$("importBtn").onclick = async () => {
+  $("importMsg").textContent = "Mengimpor…";
+  try { const d = await api("/import-presets", { method: "POST", body: "{}" }); $("importMsg").textContent = `${d.added} proxy ditambahkan (${d.total - d.added} sudah ada).`; load(); }
+  catch (e) { $("importMsg").textContent = e.message; }
+};
+
+async function load() {
+  try { proxies = (await api("/proxies")).proxies; } catch (e) { $("list").innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
+  const box = $("list");
+  box.innerHTML = proxies.length ? "" : '<p class="muted">Belum ada proxy. Buat yang pertama di atas.</p>';
+  for (const p of proxies) {
+    const url = `${location.origin}/p/${p.slug}`;
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = `<h3>${esc(p.slug)}</h3><div class="tgt">menuju ${esc(p.target)}</div>
+      <div class="url">${esc(url)}</div>
+      <div class="chips">${keyChip(p)}
+      <span class="chip ${p.hasToken ? "ok" : "warn"}">${p.hasToken ? "Dilindungi token" : "Tanpa token"}</span></div>
+      <div class="acts"><button data-a="copy">Salin URL</button><button data-a="edit">Edit</button><button data-a="del" class="danger">Hapus</button></div>`;
+    el.onclick = async (e) => {
+      const a = e.target.dataset.a; if (!a) return;
+      if (a === "copy") { try { await navigator.clipboard.writeText(url); e.target.textContent = "Tersalin"; } catch { e.target.textContent = "Salin manual"; } setTimeout(() => (e.target.textContent = "Salin URL"), 1600); }
+      if (a === "edit") edit(p);
+      if (a === "del" && confirm(`Hapus proxy "${p.slug}"? URL-nya langsung berhenti bekerja.`)) { await api("/proxies/" + p.slug, { method: "DELETE" }); load(); }
+    };
+    box.append(el);
+  }
+  fillTester();
+}
+
+function edit(p) {
+  editing = p.slug;
+  $("formTitle").textContent = "Edit proxy: " + p.slug;
+  $("slug").value = p.slug; $("slug").disabled = true; $("target").value = p.target;
+  $("apiKey").value = ""; $("token").value = "";
+  $("keyLabel").textContent = "API key tujuan (kosongkan jika tidak diubah)";
+  $("authHeader").value = p.authHeader || "Authorization"; $("authPrefix").value = p.authPrefix ?? "Bearer ";
+  $("origins").value = p.origins || "*";
+  $("keyEnv").value = p.keyEnv || ""; $("apath").value = p.path || ""; $("allowedModel").value = p.allowedModel || ""; $("noStream").checked = !!p.noStream;
+  $("extra").value = Object.keys(p.extraHeaders || {}).length ? JSON.stringify(p.extraHeaders) : "";
+  $("clearWrap").hidden = false; $("cancel").hidden = false;
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+function reset() {
+  editing = null; $("formTitle").textContent = "Proxy baru"; $("slug").disabled = false;
+  for (const id of ["slug", "target", "apiKey", "token", "extra"]) $(id).value = "";
+  $("authHeader").value = "Authorization"; $("authPrefix").value = "Bearer "; $("origins").value = "*";
+  $("keyEnv").value = $("apath").value = $("allowedModel").value = ""; $("noStream").checked = false;
+  $("keyLabel").textContent = "API key tujuan"; $("clearWrap").hidden = true; $("cancel").hidden = true;
+  $("clearKey").checked = $("clearToken").checked = false; $("formErr").textContent = "";
+}
+$("cancel").onclick = reset;
+
+$("save").onclick = async () => {
+  $("formErr").textContent = ""; $("save").disabled = true;
+  try {
+    await api("/proxies", { method: "POST", body: JSON.stringify({
+      slug: $("slug").value, target: $("target").value, apiKey: $("apiKey").value, token: $("token").value,
+      authHeader: $("authHeader").value, authPrefix: $("authPrefix").value, origins: $("origins").value,
+      extraHeaders: $("extra").value, clearKey: $("clearKey").checked, clearToken: $("clearToken").checked,
+      keyEnv: $("keyEnv").value, path: $("apath").value, allowedModel: $("allowedModel").value, noStream: $("noStream").checked }) });
+    reset(); await load();
+  } catch (e) { $("formErr").textContent = e.message; }
+  $("save").disabled = false;
+};
+
+$("send").onclick = async () => {
+  const slug = $("tProxy").value; if (!slug) { $("meta").textContent = "Buat proxy dulu."; return; }
+  let path = $("tPath").value.trim(); if (!path.startsWith("/")) path = "/" + path;
+  const headers = {}; if ($("tToken").value) headers["x-proxy-token"] = $("tToken").value;
+  const init = { method: $("tMethod").value, headers };
+  const body = $("tBody").value.trim();
+  if (body && !["GET", "DELETE"].includes(init.method)) { headers["Content-Type"] = "application/json"; init.body = body; }
+  $("send").disabled = true; $("meta").textContent = "Mengirim…"; const t0 = performance.now();
+  try {
+    const r = await fetch(`/${slug}${path}`, init); const text = await r.text(); let shown = text;
+    try { shown = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+    $("meta").textContent = `Status ${r.status} · ${Math.round(performance.now() - t0)} ms`;
+    $("out").hidden = false; $("out").textContent = shown.slice(0, 20000) || "(kosong)";
+  } catch (e) { $("meta").textContent = "Gagal terhubung"; $("out").hidden = false; $("out").textContent = String(e); }
+  $("send").disabled = false;
+};
+
+let fns = [], envNames = [], editingFn = null;
+const TEMPLATE = 'export default async function (req, { env }) {\n  const key = await env("NAMA_ENV");\n  return Response.json({ ok: true, hasKey: !!key });\n}\n';
+function fillTester() {
+  $("tProxy").innerHTML = proxies.map((p) => `<option value="p/${esc(p.slug)}">proxy: ${esc(p.slug)}</option>`).join("")
+    + fns.map((f) => `<option value="f/${esc(f.slug)}">kode: ${esc(f.slug)}</option>`).join("");
+}
+document.querySelectorAll(".tabs button").forEach((b) => (b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("on", x === b));
+  for (const t of ["proxy", "fn", "env"]) $("tab-" + t).hidden = t !== b.dataset.t;
+}));
+async function copyTo(btn, text) {
+  try { await navigator.clipboard.writeText(text); btn.textContent = "Tersalin"; } catch { btn.textContent = "Salin manual"; }
+  setTimeout(() => (btn.textContent = "Salin URL"), 1600);
+}
+
+async function loadFns() {
+  try { fns = (await api("/functions")).functions; } catch (e) { $("fList").innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
+  const box = $("fList");
+  box.innerHTML = fns.length ? "" : '<p class="muted">Belum ada fungsi.</p>';
+  for (const f of fns) {
+    const url = `${location.origin}/f/${f.slug}`;
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = `<h3>${esc(f.slug)}</h3><div class="url">${esc(url)}</div>
+      <div class="acts"><button data-a="copy">Salin URL</button><button data-a="edit">Edit</button><button data-a="del" class="danger">Hapus</button></div>`;
+    el.onclick = async (e) => {
+      const a = e.target.dataset.a; if (!a) return;
+      if (a === "copy") copyTo(e.target, url);
+      if (a === "edit") {
+        editingFn = f.slug; $("fnTitle").textContent = "Edit fungsi: " + f.slug;
+        $("fSlug").value = f.slug; $("fSlug").disabled = true; $("fCode").value = f.code; $("fCancel").hidden = false;
+        scrollTo({ top: 0, behavior: "smooth" });
+      }
+      if (a === "del" && confirm(`Hapus fungsi "${f.slug}"?`)) { await api("/functions/" + f.slug, { method: "DELETE" }); loadFns(); }
+    };
+    box.append(el);
+  }
+  fillTester();
+}
+function resetFn() {
+  editingFn = null; $("fnTitle").textContent = "Fungsi baru"; $("fSlug").disabled = false; $("fSlug").value = "";
+  $("fCode").value = TEMPLATE; $("fCancel").hidden = true; $("fErr").textContent = "";
+}
+$("fCancel").onclick = resetFn; resetFn();
+$("fSave").onclick = async () => {
+  $("fErr").textContent = ""; $("fSave").disabled = true;
+  try { await api("/functions", { method: "POST", body: JSON.stringify({ slug: $("fSlug").value, code: $("fCode").value }) }); resetFn(); await loadFns(); }
+  catch (e) { $("fErr").textContent = e.message; }
+  $("fSave").disabled = false;
+};
+
+async function loadEnv() {
+  try { envNames = (await api("/env")).names; } catch (e) { $("eList").innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
+  const box = $("eList");
+  box.innerHTML = envNames.length ? "" : '<p class="muted">Belum ada variabel.</p>';
+  for (const n of envNames) {
+    const el = document.createElement("div");
+    el.className = "card"; el.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:12px";
+    el.innerHTML = `<div><h3 class="mono">${esc(n)}</h3><div class="tgt">nilai tersimpan, disembunyikan</div></div><button class="danger">Hapus</button>`;
+    el.querySelector("button").onclick = async () => {
+      if (confirm(`Hapus variabel ${n}?`)) { await api("/env/" + n, { method: "DELETE" }); loadEnv(); load(); }
+    };
+    box.append(el);
+  }
+}
+$("eSave").onclick = async () => {
+  $("eErr").textContent = ""; $("eSave").disabled = true;
+  try { await api("/env", { method: "POST", body: JSON.stringify({ name: $("eName").value, value: $("eVal").value }) }); $("eName").value = $("eVal").value = ""; await loadEnv(); load(); }
+  catch (e) { $("eErr").textContent = e.message; }
+  $("eSave").disabled = false;
+};
+
+if (pw) enter();
+</script>
+</body>
+</html>
